@@ -1,12 +1,12 @@
-
- {
-	 "name": "node-api",
-    "main": "server.js",
-    "dependencies": {
-        "express": "~4.0.0",
-        "mysql": "^2.5.4",
-        "body-parser": "~1.0.1"
-    }
-
-
+{
+  "name": "node-api",
+  "main": "server.js",
+  "dependencies": {
+    "body-parser": "~1.0.1",
+    "cors": "2.7.1",
+    "express": "~4.0.0",
+    "handlebars": "^4.0.5",
+    "mysql": "^2.5.4",
+    
+  }
 }

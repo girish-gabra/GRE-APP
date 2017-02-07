@@ -14,8 +14,13 @@ var connection = mysql.createConnection({
   database : 'greapp'
 });
 
+var cors = require('cors');
+var engines = require('consolidate');
+// use it before all route definitions
+
 
 var app        = express();                 // define our app using express
+
 var bodyParser = require('body-parser');
 
 // configure app to use bodyParser()
@@ -23,7 +28,31 @@ var bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
+
+app.all('*', function(req, res, next) {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
 var port = process.env.PORT || 8080;        // set our port
+
+/*app.use(express.static(__dirname + '/app'));
+app.engine('html', engines.underscore);
+
+app.set('views', __dirname + '/app/views');
+app.set('view engine', 'html');
+*/
+
+app.use(express.static(__dirname + '/app'));
+
+app.engine('html',engines.underscore);
+/*
+ Set views direcoctory. DO NOT set this with the static directory!. 
+*/
+app.set('views', __dirname+'/app/views');
+app.set('view engine', 'html');
+
 
 // ROUTES FOR OUR API
 // =============================================================================
@@ -37,24 +66,45 @@ connection.connect(function(err){
 	}
 });
 
+
+router.get("/",function(req,res){
+	console.log("index page requested");
+	res.render('index', {message:''});
+});
+
+
 router.post('/login',function(req,res){
 	var username = JSON.stringify(req.body.uname);
 	var password = req.body.pwd;
-	//console.log('username: '+username);
-	//console.log('passowrd: '+password);
+	console.log('username: '+username);
+	console.log('passowrd: '+password);
 	var encryptedPassword = JSON.stringify(encrypt(password));
 	console.log(encryptedPassword);
-	connection.query('select* from user_master where username='+username+' and password = '+encryptedPassword ,function(err,rows,fields){
+	//res.setHeader("Content-Type", "application/json");
+	connection.query('select username from user_master where username='+username+' and password = '+encryptedPassword ,function(err,rows,fields){
 		if(!err){
-			res.send(rows);
+			//var result = JSON.stringify(rows);
+			console.log(JSON.stringify(rows));
+			//res.send(JSON.stringify("{'username' : 'tk'}"));
+			//res.send(JSON.stringify(rows));
+			 //res.contentType('json');
+			 //res.writeHead(200, { 'Content-Type': 'application/json' }); 
+			 res.send(rows);
+			 //res.redirect('./themes');
+			 //res.render('web/themes.html',{'user': username});	
+			/* res.render('user/home', {
+                user:username,
+                title:'node'
+            });*/
+
 		}else{
 			console.log(err);
+			res.send(err);
 		}
 
 
 	});
 });
-
 
 router.post('/register',function(req,res){
 	var uname = req.body.uname;
@@ -107,12 +157,45 @@ router.post('/register',function(req,res){
 router.get('/themes', function(req, res) {
 	connection.query('Select * from themes_all ', function(err,rows,fields){
 		if(!err){
-			console.log('The solution is: ',rows);
+			console.log(rows);
+			res.send(rows);
 		}else{
 			console.log('Error while performing query for get themes');
 		}
 	});    
 })
+
+router.get('/themes/:themeid', function(req, res) {
+	var themeid = parseInt(req.params.themeid);
+	connection.query('Select * from subthemes_all where theme_id = '+themeid, function(err,rows,fields){
+		if(!err){
+			//console.log('The solution is: ',rows);
+			res.send(rows);
+		}else{
+			console.log(err);
+		}
+	});    
+})
+
+/*router.post('/test', function(req, res) {
+	//var themeid = parseInt(req.params.themeid);
+	var username = req.body.uname;
+	console.log('inside test');
+	connection.query('Select * from user_master' , function(err,rows,fields){
+		if(!err){
+			//console.log('The solution is: ',rows);
+			var response = { result: 'success' };
+			console.log(response);
+			res.send(response);
+			//res.redirect('/themes');
+		}else{
+			console.log(err);
+		}
+	});
+	
+	console.log(username);    
+})*/
+
 
 router.get('/word/:wid', function(req, res) {
 	var wordId = parseInt(req.params.wid);
@@ -129,7 +212,23 @@ router.get('/word/:wid', function(req, res) {
 	});    
 })
 
-
+router.get('/word/:themeid/:subthemeid', function(req, res) {
+	var themeid = parseInt(req.params.themeid);
+	var subthemeid = parseInt(req.params.subthemeid);
+	connection.query('select a.word,a.word_id,b.description theme,c.description subtheme,d.description type '+ 
+					 'from words_all a, themes_all b, subthemes_all c, types_all d '+ 
+					 'where a.theme_id = b.theme_id and a.subtheme_id = c.subtheme_id and a.type_id = d.type_id and a.theme_id = '+themeid+
+					 ' and a.subtheme_id = '+subthemeid
+					 , function(err,rows,fields){
+		if(!err){
+			//console.log('The solution is: ',rows);
+			res.send(rows);
+		}else{
+			console.log('Error while fetching words for themeid: '+themeid+" and subthemeid: "+subthemeid);
+			console.log(err);
+		}
+	});    
+})	
 
 /* Encryption and Decryption*/
 var crypto = require('crypto');
@@ -155,7 +254,7 @@ function decrypt(text){
 
 // REGISTER OUR ROUTES -------------------------------
 // all of our routes will be prefixed with /api
-app.use('/api', router);
+app.use('/', router);
 
 
 // START THE SERVER
